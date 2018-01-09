@@ -1,0 +1,16 @@
+{
+  "name": "nma-bot",
+  "version": "0.0.1",
+  "description": "NMA BOT",
+  "main": "bot.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "NMA",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^4.0.0",
+    "gdax": "^0.4.2",
+    "node-schedule": "^1.2.5"
+  }
+}
