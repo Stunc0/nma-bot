@@ -11,13 +11,13 @@ const authedClient = new Gdax.AuthenticatedClient(key, b64secret, passphrase, ap
 const startRate = process.env.START_RATE_BTC;
 
 const btcInterval = process.env.INVESTMENT_INTERVAL_BTC;
-const btcPublicClient = new Gdax.PublicClient('BTC-EUR', apiURI);
+const btcPublicClient = new Gdax.PublicClient(apiURI, 'BTC-EUR');
 
 const ethInterval = process.env.INVESTMENT_INTERVAL_ETH;
-const ethPublicClient = new Gdax.PublicClient('ETH-EUR', apiURI);
+const ethPublicClient = new Gdax.PublicClient(apiURI, 'ETH-EUR');
 
 const ltcInterval = process.env.INVESTMENT_INTERVAL_LTC;
-const ltcPublicClient = new Gdax.PublicClient('LTC-EUR', apiURI);
+const ltcPublicClient = new Gdax.PublicClient(apiURI, 'LTC-EUR');
 
 const sandboxMode = process.env.SANDBOX_MODE;
 const fiatCurrency = process.env.FIAT_CURRENCY;

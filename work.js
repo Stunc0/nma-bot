@@ -52,7 +52,7 @@ const writeLog = (message) => {
 
 const trade = (coinSymbol, publicClient) => {
 
-  publicClient.getProductTicker((error, response, data) => {
+  publicClient.getProductTicker(coinSymbol+'-'+fiatCurrency , (error, response, data) => {
     if(data) {
 
       currentPrice = data.price;
@@ -120,11 +120,11 @@ const trade = (coinSymbol, publicClient) => {
       show.greenText('Current price: ' + data.price);
 
       if(precon == 'buy' && volumeToBuy > 0){
-        buy(coinSymbol, volumeToBuy, rate);
+        buy(coinSymbol, volumeToBuy, currentPrice);
       }
 
       if(precon == 'sell' && positions.length > 0){
-        sell(coinSymbol, volume, rate);
+        sell(coinSymbol, currentPrice);
       }
 
       lastPrice = currentPrice;
@@ -219,7 +219,7 @@ const botOn = (crypto) => {
   writeLog('Start trading on ' + crypto);
 
   if (crypto == 'BTC') {
-    btcPublicClient.getProductTicker((error, response, data) => {
+    btcPublicClient.getProductTicker('BTC-'+fiatCurrency , (error, response, data) => {
       if(data) {
         lastPrice = data.price;
         coinOn('BTC', btcInterval, btcPublicClient);
@@ -227,7 +227,7 @@ const botOn = (crypto) => {
     });
   }
   if (crypto == 'ETH') {
-    ethPublicClient.getProductTicker((error, response, data) => {
+    ethPublicClient.getProductTicker('ETH-'+fiatCurrency , (error, response, data) => {
       if(data) {
         lastPrice = data.price;
         coinOn('ETH', ethInterval, ethPublicClient);
@@ -235,7 +235,7 @@ const botOn = (crypto) => {
     });
   }
   if (crypto == 'LTC') {
-    ltcPublicClient.getProductTicker((error, response, data) => {
+    ltcPublicClient.getProductTicker('LTC-'+fiatCurrency , (error, response, data) => {
       if(data) {
         lastPrice = data.price;
         coinOn('LTC', ltcInterval, ltcPublicClient);
