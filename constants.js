@@ -8,16 +8,16 @@ const passphrase = process.env.API_PASSPHRASE;
 const apiURI = process.env.SANDBOX_MODE === 'false' ? 'https://api.gdax.com' : 'https://api-public.sandbox.gdax.com';
 const authedClient = new Gdax.AuthenticatedClient(key, b64secret, passphrase, apiURI);
 
-const btcStartRate = process.env.START_RATE_BTC;
-const btcAmt = process.env.INTERVAL_INVESTMENT_AMOUNT_BTC;
+const startRate = process.env.START_RATE_BTC;
+
 const btcInterval = process.env.INVESTMENT_INTERVAL_BTC;
 const btcPublicClient = new Gdax.PublicClient('BTC-EUR', apiURI);
 
-const ethAmt = process.env.INTERVAL_INVESTMENT_AMOUNT_ETH;
 const ethInterval = process.env.INVESTMENT_INTERVAL_ETH;
+const ethPublicClient = new Gdax.PublicClient('ETH-EUR', apiURI);
 
-const ltcAmt = process.env.INTERVAL_INVESTMENT_AMOUNT_LTC;
 const ltcInterval = process.env.INVESTMENT_INTERVAL_LTC;
+const ltcPublicClient = new Gdax.PublicClient('LTC-EUR', apiURI);
 
 const sandboxMode = process.env.SANDBOX_MODE;
 const fiatCurrency = process.env.FIAT_CURRENCY;
@@ -25,14 +25,13 @@ const fiatCurrency = process.env.FIAT_CURRENCY;
 // Exports
 module.exports = {
   authedClient,
-  btcStartRate,
-  btcAmt,
+  startRate,
   btcInterval,
   btcPublicClient,
-  ethAmt,
   ethInterval,
-  ltcAmt,
+  ethPublicClient,
   ltcInterval,
+  ltcPublicClient,
   fiatCurrency,
   sandboxMode,
 };

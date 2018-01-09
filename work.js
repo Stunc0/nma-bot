@@ -1,22 +1,21 @@
 const {
   authedClient,
-  btcStartRate,
-  btcAmt,
+  startRate,
   btcInterval,
-  btcAccountId,
   btcPublicClient,
-  ethAmt,
   ethInterval,
-  ltcAmt,
+  ethPublicClient,
   ltcInterval,
+  ltcPublicClient,
   fiatCurrency,
   sandboxMode,
 } = require('./constants.js');
 
-var fs = require('fs');
+const show = require('./show.js');
+const fs = require('fs');
 const schedule = require('node-schedule');
 
-var btcStartRateVar = btcStartRate;
+var btcStartRateVar = startRate;
 var amountpositions = 0;
 var currentPrice = 0;
 var lastPrice = 0;
@@ -51,11 +50,9 @@ const writeLog = (message) => {
   );
 }
 
-// Place a market order for the interval investment amount
-const buy = (coinSymbol, amt) => {
+const trade = (coinSymbol, publicClient) => {
 
-
-  btcPublicClient.getProductTicker((error, response, data) => {
+  publicClient.getProductTicker((error, response, data) => {
     if(data) {
 
       currentPrice = data.price;
@@ -72,8 +69,8 @@ const buy = (coinSymbol, amt) => {
         neutralSince = 0;
       }
 
-      console.log("upSince: " + upSince);
-      console.log("neutralSince: " + neutralSince);
+      show.cyanText("upSince: " + upSince);
+      show.cyanText("neutralSince: " + neutralSince);
 
       tendance = currentPrice / lastPrice;
       tendanceCumul *= tendance;
@@ -82,10 +79,10 @@ const buy = (coinSymbol, amt) => {
         tendanceSinceLastBuy *= tendance;
       }
 
-      console.log("tendance: " + tendance);
-      console.log("tendanceCumul: " + tendanceCumul);
+      show.magentaText("tendance: " + tendance);
+      show.magentaText("tendanceCumul: " + tendanceCumul);
       if(tendanceSinceLastBuy != null){
-        console.log("tendanceSinceLastBuy: " + tendanceSinceLastBuy);
+        show.magentaText("tendanceSinceLastBuy: " + tendanceSinceLastBuy);
       }
 
 
@@ -103,7 +100,7 @@ const buy = (coinSymbol, amt) => {
 
       //cas dangereux
       if(tendance > 1.001 || tendance < 0.0005){
-        console.log('========= CAS DANGEREUX =========');
+        show.redText('========= CAS DANGEREUX =========');
         precon = 'sell';
 
         //pas sûre de devoir le mettre
@@ -112,155 +109,138 @@ const buy = (coinSymbol, amt) => {
 
       //palier tous les 0,4% de gain
       if(tendanceSinceLastBuy > 1.004){
-        console.log('palier');
+        show.backGreen('palier');
         precon = 'sell';
       }
 
-      console.log("precon: " + precon);
+      show.underscore("precon: " + precon);
 
       volumeToBuy = parseFloat(balance / currentPrice).toFixed(8);
 
-      if(precon == 'buy' && volumeToBuy > 0){
-          console.log('Current price: ' + data.price);
-          process.stderr.write("\007");
+      show.greenText('Current price: ' + data.price);
 
-          //Peut être voir pour augmenter prix pour être sur de remplir l'ordre. Mais attention aux marges
-          message = 'BUY: ' + volumeToBuy + 'BTC @ ' + currentPrice + 'EUR ( ' + parseFloat(volumeToBuy*currentPrice).toFixed(2) + ' EUR )';
-          console.log(message);
-          positions.push({volume : volumeToBuy, rate : currentPrice });
-          balance = parseFloat(balance) - parseFloat(volumeToBuy*currentPrice);
-          lastBuy = data.price;
-          writeLog(message);
-          console.log(positions);
-          tendanceSinceLastBuy = 1;
+      if(precon == 'buy' && volumeToBuy > 0){
+        buy(coinSymbol, volumeToBuy, rate);
       }
 
       if(precon == 'sell' && positions.length > 0){
-        console.log('Current price: ' + data.price);
-        positions.map((ts, index) => {
-            txGain = parseFloat(currentPrice/ts.rate);
-            //garde-fou
-            if(txGain > 0.999){
-              process.stderr.write("\007");
-              //Vendre a moins du current price pour être sûr de vendre
-              message = 'SELL: ' + ts.volume + 'BTC @ ' + currentPrice + 'EUR ( ' + txGain + '%)';
-              console.log(message);
-              balance = parseFloat(balance) + parseFloat(ts.volume * currentPrice);
-              positions.splice(index, 1);
-              writeLog(message);
-            } else {
-              console.log('Pertes trop importantes.');
-            }
-        });
-        console.log(positions);
-        tendanceSinceLastBuy = null;
+        sell(coinSymbol, volume, rate);
       }
 
       lastPrice = currentPrice;
+    } else {
+      show.backRed("Problème d'API");
     }
 
   });
-
-
-  /*
-  const buyParams = {
-    type: 'limit',
-    price: parseFloat(btcStartRateVar).toFixed(2),
-    size:  parseFloat(amt/btcStartRateVar).toFixed(8),
-    product_id: `${coinSymbol}-${fiatCurrency}`,
-  };
-  authedClient.buy(buyParams, (error, response, data) => {
-    amountpositions = amountpositions + data.size;
-    console.log('Achat');
-    if (sandboxMode) {
-      console.log(data);
-    }
-
-    btcStartRateVar = btcStartRateVar * 0.998
-
-    if(data.message == 'Insufficient funds'){
-      //sell(coinSymbol, amountpositions);
-      authedClient.buy(buyParams, (error, response, data) => {
-        amountpositions = amountpositions + data.size;
-        console.log('Achat');
-        if (sandboxMode) {
-          console.log(data);
-        }
-
-        btcStartRateVar = btcStartRateVar * 0.998
-
-        if(data.message == 'Insufficient funds'){
-
-          authedClient.cancelOrders((error, response, data) => {
-            console.log('Suppression des ordres')
-          });
-
-          //sell(coinSymbol, amountpositions);
-        }
-      });
-    }
-  });
-  */
-
 
 };
-/*
-const sell = (coinSymbol, amt) => {
-  const sellParams = {
+
+const buy = (coinSymbol, volume, rate) => {
+  let buyParams = {
     type: 'limit',
-    price: parseFloat(btcStartRate * 1.01).toFixed(2),
-    size:  parseFloat(amt).toFixed(8),
+    price: parseFloat(rate).toFixed(2),
+    size:  parseFloat(rate/volume).toFixed(8),
     product_id: `${coinSymbol}-${fiatCurrency}`,
   };
-  authedClient.sell(sellParams, (error, response, data) => {
-    console.log('Vente');
-    if (sandboxMode) {
-      console.log(data);
-    }
-  });
+  //authedClient.buy(buyParams, (error, response, data) => {
+  //  if (sandboxMode) {
+  //    console.log(data);
+  //  }
+
+    process.stderr.write("\007");
+    //Peut être voir pour augmenter prix pour être sur de remplir l'ordre. Mais attention aux marges
+    let message = 'BUY: ' + volume + coinSymbol + ' @ ' + rate + fiatCurrency + ' ( ' + parseFloat(volume*rate).toFixed(2) + fiatCurrency+ ' )';
+    show.backYellow(message);
+    positions.push({volume : volume, rate : rate });
+    balance = parseFloat(balance) - parseFloat(volume*rate);
+    writeLog(message);
+    show.cyanText(positions);
+    tendanceSinceLastBuy = 1;
+  //}
+}
+
+const sell = (coinSymbol, rate) => {
+
+    positions.map((ts, index) => {
+      let txGain = parseFloat(rate/ts.rate);
+      //garde-fou
+      if(txGain > 0.999){
+        const sellParams = {
+          type: 'limit',
+          price: parseFloat(ts.rate).toFixed(2),
+          size:  parseFloat(ts.volume).toFixed(8),
+          product_id: `${coinSymbol}-${fiatCurrency}`,
+        };
+        //authedClient.sell(sellParams, (error, response, data) => {
+        //  if (sandboxMode) {
+        //    console.log(data);
+        //  }
+          process.stderr.write("\007");
+          //Vendre a moins du current price pour être sûr de vendre
+          let message = 'SELL: ' + ts.volume + coinSymbol + ' @ ' + rate + fiatCurrency + ' ( ' + txGain + '%)';
+          show.backBlue(message);
+          balance = parseFloat(balance) + parseFloat(ts.volume * rate);
+          positions.splice(index, 1);
+          writeLog(message);
+        //  });
+      } else {
+        show.redText('Pertes trop importantes.');
+      }
+
+      console.log(positions);
+      tendanceSinceLastBuy = null;
+    });
 };
-*/
+
 
 // Convert text based intervals to raw intervals
 const rawInterval = interval =>
     interval === 'sec' ? '* * * * * *'
-  : interval === 'fivesec' ? '*/5 * * * * *'
-  : interval === 'min' ? '0-59/1 * * * *'
-  : interval === 'tenmins' ? '0-59/10 * * * *'
-  : interval === 'hour' ? '0 0-23/1 * * *'
-  : interval === 'sixhours' ? '0 0-23/6 * * *'
-  : interval === 'day' ? '0 0 1-31/1 * *'
+  //: interval === 'fivesec' ? '*/5 * * * * *'
+  //: interval === 'min' ? '0-59/1 * * * *'
+  //: interval === 'tenmins' ? '0-59/10 * * * *'
+  //: interval === 'hour' ? '0 0-23/1 * * *'
+  //: interval === 'sixhours' ? '0 0-23/6 * * *'
+  //: interval === 'day' ? '0 0 1-31/1 * *'
   : console.log('Scheduling failed: Invalid investment interval (check your .env file to make sure the investment intervals are correct)')
 
 
-// Schedule buys and tack on a randomized, artificial delay lasting up to 1 minute
-const coinOn = (coinSymbol, amt, interval) => {
+const coinOn = (coinSymbol, interval, publicClient) => {
   schedule.scheduleJob(rawInterval(interval), () => {
-    //const randomDelay = Math.floor(Math.random() * 60) + 1;
-    const randomDelay = 1; //overide pour test
     setTimeout(() => {
-      buy(coinSymbol, amt);
-    }, randomDelay * 1000);
+      trade(coinSymbol, publicClient);
+    }, 100);
   });
 };
 
 
-// Turn coins on if their interval investment amounts meet the GDAX trade rules minimum
-const botOn = () => {
-  writeLog('Start trading');
-  btcPublicClient.getProductTicker((error, response, data) => {
-    if(data) {
-      lastPrice = data.price;
-    }
-  });
-  if (btcAmt >= 1.00) {
-    coinOn('BTC', btcAmt, btcInterval);
+const botOn = (crypto) => {
+  writeLog('Start trading on ' + crypto);
+
+  if (crypto == 'BTC') {
+    btcPublicClient.getProductTicker((error, response, data) => {
+      if(data) {
+        lastPrice = data.price;
+        coinOn('BTC', btcInterval, btcPublicClient);
+      }
+    });
   }
-  if (ethAmt >= 1.00) {
-    coinOn('ETH', ethAmt, ethInterval);
+  if (crypto == 'ETH') {
+    ethPublicClient.getProductTicker((error, response, data) => {
+      if(data) {
+        lastPrice = data.price;
+        coinOn('ETH', ethInterval, ethPublicClient);
+      }
+    });
   }
-  if (ltcAmt >= 1.00) {
-    coinOn('LTC', ltcAmt, ltcInterval);
+  if (crypto == 'LTC') {
+    ltcPublicClient.getProductTicker((error, response, data) => {
+      if(data) {
+        lastPrice = data.price;
+        coinOn('LTC', ltcInterval, ltcPublicClient);
+      }
+    });
   }
 };
 
