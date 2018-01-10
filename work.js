@@ -85,7 +85,6 @@ const trade = (coinSymbol, publicClient) => {
         show.magentaText("tendanceSinceLastBuy: " + tendanceSinceLastBuy);
       }
 
-
       if(tendanceCumul > 1.001){
         precon = 'buy';
         tendanceCumul = 1;
@@ -94,6 +93,9 @@ const trade = (coinSymbol, publicClient) => {
       //à tester avec un marge moins haute
       //TODO: voir pour ordonner le sell si trop de neutral que si on a une position
       if(tendanceCumul < 0.9992 || neutralSince > 10){
+        if(neutralSince > 10){
+          show.redText('********* TROP LONGTEMPS AU NEUTRE *********');
+        }
         precon = 'sell';
         tendanceCumul = 1;
       }
@@ -185,7 +187,7 @@ const sell = (coinSymbol, rate) => {
           writeLog(message);
         //  });
       } else {
-        show.redText('Pertes trop importantes.');
+        show.redText('____| PERTE TROP IMPORTANTE POUR VENDRE |____');
       }
 
       console.log(positions);
